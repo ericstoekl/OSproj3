@@ -41,4 +41,7 @@ int create_struct_dir(const char *dir_name)
 
     printf("'%s', block %d\n", (char *)(filesys + (blk_index * BLK_SZ_INT)), blk_index);
 
+    // Now I can easily store the int 'pointer' to the next struct dir or FCB like so:
+    *((filesys + (blk_index * BLK_SZ_INT))+7) = 4000;
+
 }
