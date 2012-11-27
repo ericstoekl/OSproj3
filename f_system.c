@@ -37,8 +37,8 @@ int create_struct_dir(const char *dir_name)
     flag_bit(blk_index);
 
     // Put the name of this directory in the first 28 bytes (7 ints) of the block we just found:
-    memcpy((char *)filesys + (blk_index * BLK_SZ_INT), dir_name, name_len+1);
+    memcpy((char *)(filesys + (blk_index * BLK_SZ_INT)), dir_name, name_len+1);
 
-    printf("'%s', block %d\n", (char *)filesys + (blk_index * BLK_SZ_INT), blk_index);
+    printf("'%s', block %d\n", (char *)(filesys + (blk_index * BLK_SZ_INT)), blk_index);
 
 }
