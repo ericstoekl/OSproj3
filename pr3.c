@@ -10,7 +10,7 @@
 
 /*--------------------------------------------------------------------------------*/
 
-int debug = 0;                                    // extra output; 1 = on, 0 = off
+extern int debug;                                    // extra output; 1 = on, 0 = off
 
 /*--------------------------------------------------------------------------------*/
 
@@ -35,6 +35,8 @@ int debug = 0;                                    // extra output; 1 = on, 0 = o
 
 // The actual file system, as a global unsigned int pointer:
 extern unsigned int *filesys;
+
+extern unsigned int cur_dir;
 
 /* The size argument is usually ignored.
  * The return value is 0 (success) or -1 (failure).
@@ -82,6 +84,8 @@ void parse(char *buf, int *argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
+    debug = 1;
+
     char in[LINESIZE];
     char *cmd, *fnm, *fsz;
     char dummy[] = "";
@@ -130,20 +134,27 @@ int do_root(char *name, char *size)
     if (debug) printf("%s\n", __func__);
 
     // We now call a function that allocates 40 megabytes for the filesys pointer:
-    int ret = init_filesys();
-
+    if(init_filesys() == -1)
+        return -1;
+/*
     free_blks_bounds bnds;
     bnds = find_free_blocks(3);
     printf("free blocks found: %d to %d inclusive\n", bnds.start, bnds.end);
+*/
+    int root_addr = create_struct_dir("root");
+    if(root_addr == -1)
+        return -1;
 
-    create_struct_dir("root");
+    // Set the current working dir as the root dir:
+    cur_dir = root_addr;
+    if(debug) printf("root directory is block %d\n", cur_dir);
 
-    create_struct_dir("root1");
+/*    create_struct_dir("root1");
     create_struct_dir("root2");
     create_struct_dir("root3");
     create_struct_dir("root4");
-
-    return ret;
+*/
+    return 0;
 }
 
 
@@ -160,10 +171,17 @@ int do_chdir(char *name, char *size)
     return -1;
 }
 
-
+// Create a new struct_directory, as well as a new directory entry in the
+// current working directory (cur_dir). 
 int do_mkdir(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
+
+    int newdir_addr = create_struct_dir(name);
+
+    if(debug) printf("created new directory at block %d\n", newdir_addr);
+
+    // Add a directory entry:
     return -1;
 }
 

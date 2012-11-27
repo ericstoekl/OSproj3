@@ -18,8 +18,13 @@
 #define MAX_BIT_VAL
 */
 
+int debug;
+
 // Global unsigned int pointer, points to entire filesystem storage arena.
 unsigned int *filesys;
+
+// Block address of the current working directory
+unsigned int cur_dir;
 
 
 int init_filesys()
