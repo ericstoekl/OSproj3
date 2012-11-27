@@ -66,12 +66,24 @@ int create_struct_dir(const char *dir_name)
     }
 
     // Find the location in the filesystem where we can put this directory struct.
-
     free_blks_bounds blk_bnds;
     blk_bnds = find_free_blocks(1);
     int blk_index = blk_bnds.start; // This is the first free block we found.
 
     flag_bit(blk_index); // Make sure to flag the block we just used in the bitmap!
+
+    // Set the first dir_contents to '.', or pointer to this directory:
+    memmove((char *)(directory->dir_contents), ".", 2);
+    directory->dir_contents[7] = blk_index;
+    directory->filled_count++;
+
+    // If this isn't the root directory, create '..' directory which reference the parent dir:
+    if(strcmp(dir_name, "root") != 0)
+    {
+        memmove((char *)(directory->dir_contents + 8), "..", 3);
+        directory->dir_contents[15] = cur_dir;
+        directory->filled_count++;
+    }
 
     // Deep copy everything from the directory struct over to the filesys at this blk_index:
     memcpy((struct_dir *)(filesys + (blk_index * BLK_SZ_INT)), directory, BLK_SZ_BYTE);
@@ -80,12 +92,8 @@ int create_struct_dir(const char *dir_name)
     directory = NULL;
 
     if(debug) printf("'%s', block %d\n", (char *)(filesys + (blk_index * BLK_SZ_INT)), blk_index);
-/*
-    // Now I can easily store the int 'pointer' to the next struct dir or FCB like so:
-    *((filesys + (blk_index * BLK_SZ_INT))+7) = 4000;
-*/
 
-// Now we have a new directory stored in the filesystem in a single block.
+    // Now we have a new directory stored in the filesystem in a single block.
     return blk_index;
     
 }
@@ -141,14 +149,22 @@ int check_name(const char *name)
     int filled_count = filesys[blk_start + FILLED_COUNT];
     int indexable_count = (filled_count+1)*8 + blk_start;
 
+    // Check if name is root, if it is, return -1
+    if(strcmp(name, "root") == 0)
+    {
+        printf("check_name: bad file name `%s': there can only be one root\n", name);
+        return -1;
+    }
+
     for(i = blk_start; i < indexable_count; i += 8)
     {
         printf("i is %d\n", i);
         if(strcmp((const char *)(filesys + i), name) == 0)
         {
-            printf("mkdir: cannot create directory `%s': File exists\n", name);
-            return -1;
+            return i;
         }
     }
+
+    // Filename was not found
     return 0;
 }

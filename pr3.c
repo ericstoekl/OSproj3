@@ -164,11 +164,25 @@ int do_print(char *name, char *size)
     return -1;
 }
 
-
+// Find the directory we want to change to, then set cur_dir as that directory's block addr.
 int do_chdir(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
-    return -1;
+
+    // Find the directory, if it exists:
+    int i = check_name(name);
+    if(i == 0)
+    {
+        printf("chdir: %s: No such file or directory\n", name);
+        return -1;
+    }
+
+    cur_dir = filesys[i + 7];
+    if(debug) printf("chdir: cur_dir is now %d\n", cur_dir);
+    if(debug) printf("chdir: name of current dir is now %s\n", 
+        (char *)(filesys + (cur_dir * BLK_SZ_INT)));
+
+    return 0;
 }
 
 // Create a new struct_directory, as well as a new directory entry in the
@@ -178,7 +192,10 @@ int do_mkdir(char *name, char *size)
     if (debug) printf("%s\n", __func__);
 
     if(check_name(name) != 0)
+    {
+        printf("mkdir: cannot create directory `%s': File exists\n", name);
         return -1;
+    }
 
     int newdir_addr = create_struct_dir(name);
 
