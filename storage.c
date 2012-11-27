@@ -42,6 +42,8 @@ int init_filesys()
     // because it's taken by the bitmap itself!
     flag_bit(0);
 
+    // Set up the first unused block (now block 1) as the first struct directory.
+
     return 0;
 
 }
@@ -85,7 +87,7 @@ free_blks_bounds find_free_blocks(unsigned int howmany)
             if(freecount == (int)howmany)
             {
                 // We've found howmany contiguous free blocks!
-                return (free_blks_bounds){i*32 + j - howmany, i*32 + j};
+                return (free_blks_bounds){i*32 + j - howmany, i*32 + j - 1};
             }
 
             ander = (unsigned int)pow(2, j);

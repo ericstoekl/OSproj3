@@ -1,7 +1,7 @@
 
 SRC = pr3.c
-INC = storage.h
-LIB = storage.c
+INC = storage.h f_system.h
+LIB = storage.c f_system.c
 
 
 pr3: $(SRC) $(INC) $(LIB)

@@ -130,14 +130,14 @@ int do_root(char *name, char *size)
     if (debug) printf("%s\n", __func__);
 
     // We now call a function that allocates 40 megabytes for the filesys pointer:
-    init_filesys();
+    int ret = init_filesys();
 
 
     free_blks_bounds bnds;
     bnds = find_free_blocks(1000);
-    printf("free blocks found: %d to %d\n", bnds.start, bnds.end);
+    printf("free blocks found: %d to %d inclusive\n", bnds.start, bnds.end);
 
-    return -1;
+    return ret;
 }
 
 
