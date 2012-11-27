@@ -177,6 +177,9 @@ int do_mkdir(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
 
+    if(check_name(name) != 0)
+        return -1;
+
     int newdir_addr = create_struct_dir(name);
 
     if(debug) printf("created new directory at block %d\n", newdir_addr);
@@ -185,7 +188,7 @@ int do_mkdir(char *name, char *size)
     if(add_dir_entry(name, newdir_addr) != 0)
         return -1;
 
-    return -1;
+    return 0;
 }
 
 

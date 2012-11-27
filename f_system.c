@@ -21,6 +21,7 @@ extern unsigned int cur_dir;
 typedef struct str_dir
 {
     char dir_name[28]; // 28 bytes to hold the name of this directory
+    int filled_count;  // keeps track of how many entries are in the directory.
     int more_data;     // block address of block that holds more data (if necessary)
     int dir_contents[120]; // 120 ints (15 rows) to account for the rest of the data
                            // in this directory block.
@@ -33,9 +34,10 @@ typedef struct str_dir
 int create_struct_dir(const char *dir_name)
 {
     // (32 bytes) are used per 'line' of the struct dir.
+    // (4 bytes) will be used to keep track of how many entries are in this block.
     // (4 bytes) of the first line must be left to be used
     // by the 'pointer' which can point to the continuation of this struct dir.
-    // Therefore the dir_name can be 27 bytes (28 characters with null term) max.
+    // Therefore the dir_name can be 23 bytes (24 characters with null term) max.
     struct_dir *directory;
     if(debug) printf("struct_dir is %d bytes.\n", (int)sizeof(struct_dir));
     directory = (struct_dir *)malloc(sizeof(struct_dir));
@@ -47,11 +49,14 @@ int create_struct_dir(const char *dir_name)
         return -1;
     }
 
-    // Copy the bytes over, deep:
+    // Copy the dir_name bytes over, deep:
     int i;
     for(i = 0; dir_name[i] != '\0'; i++)
         directory->dir_name[i] = dir_name[i];
     directory->dir_name[i] = '\0';
+
+    // Set the number of dir entries to 0:
+    directory->filled_count = 0;
 
     // All the dir_contents[] should be set to 0xDEADBEEF, to denote that they
     // are empty and ready to be filled.
@@ -106,7 +111,7 @@ int add_dir_entry(const char* name, const int dir_addr)
     int i = blk_start + 8;
     for(; i < (blk_start + BLK_SZ_INT); i += 8)
     {
-        // If the first int is DEADBEEF, use this row:
+        // If the first int of the row is DEADBEEF, use this row:
         if(filesys[i] == 0xDEADBEEF)
             break;
     }
@@ -123,5 +128,27 @@ int add_dir_entry(const char* name, const int dir_addr)
     // 3: copy the dir_addr into the final int (final 4 bytes).
     filesys[i + 7] = dir_addr;
 
+    // 4: increment the counter keeping track of the number of entries in the dir:
+    filesys[blk_start + FILLED_COUNT] ++;
+
+    return 0;
+}
+
+int check_name(const char *name)
+{
+    int i;
+    int blk_start = (cur_dir * BLK_SZ_INT);
+    int filled_count = filesys[blk_start + FILLED_COUNT];
+    int indexable_count = (filled_count+1)*8 + blk_start;
+
+    for(i = blk_start; i < indexable_count; i += 8)
+    {
+        printf("i is %d\n", i);
+        if(strcmp((const char *)(filesys + i), name) == 0)
+        {
+            printf("mkdir: cannot create directory `%s': File exists\n", name);
+            return -1;
+        }
+    }
     return 0;
 }
