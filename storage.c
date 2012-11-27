@@ -35,7 +35,7 @@ int init_filesys()
 
     // Set up the first block (first 128 ints) as the bitmap block.
     int i;
-    for(i = 0; i < BLK_SZ_INT; i++)
+    for(i = 0; i < BLK_SZ_BYTE; i++)
         *(filesys+i) = 0;
     
     // The very first (zeroth) block should be flagged in the bitmap,

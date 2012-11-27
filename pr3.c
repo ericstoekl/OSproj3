@@ -132,10 +132,16 @@ int do_root(char *name, char *size)
     // We now call a function that allocates 40 megabytes for the filesys pointer:
     int ret = init_filesys();
 
-
     free_blks_bounds bnds;
-    bnds = find_free_blocks(1000);
+    bnds = find_free_blocks(3);
     printf("free blocks found: %d to %d inclusive\n", bnds.start, bnds.end);
+
+    create_struct_dir("root");
+
+    create_struct_dir("root1");
+    create_struct_dir("root2");
+    create_struct_dir("root3");
+    create_struct_dir("root4");
 
     return ret;
 }
