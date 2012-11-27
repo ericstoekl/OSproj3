@@ -84,3 +84,44 @@ int create_struct_dir(const char *dir_name)
     return blk_index;
     
 }
+
+int add_dir_entry(const char* name, const int dir_addr)
+{
+    int namelen = strlen(name);
+    if(namelen > DIR_NAME_MAX-1)
+    {
+        fprintf(stderr, "%s: directory name too large (>DIR_NAME_MAX)\n", __func__);
+        return -1;
+    }
+    if(dir_addr > 4095 || dir_addr < 0)
+    {
+        fprintf(stderr, "%s: dir_addr too large or too small.\n", __func__);
+        return -1;
+    }
+
+    // 1: Find the first unused row of the current directory (cur_dir)
+
+    // We can start searching at index 8 of this block:
+    int blk_start = cur_dir * BLK_SZ_INT;
+    int i = blk_start + 8;
+    for(; i < (blk_start + BLK_SZ_INT); i += 8)
+    {
+        // If the first int is DEADBEEF, use this row:
+        if(filesys[i] == 0xDEADBEEF)
+            break;
+    }
+
+    if(i == blk_start + BLK_SZ_INT)
+    {
+        // this struct_dir is full! we need to create a new one.
+        printf("this struct_dir is full! we need to create a new one.\n");
+    }
+
+    // 2: copy the name into the first 7 ints (directory can have 27 characters max).
+    memmove((char *)(filesys + i), name, namelen+1);
+
+    // 3: copy the dir_addr into the final int (final 4 bytes).
+    filesys[i + 7] = dir_addr;
+
+    return 0;
+}

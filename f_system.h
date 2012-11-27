@@ -30,8 +30,9 @@ typedef struct str_dir
 // and struct directory 'etc'
 int create_struct_dir(const char* dir_name);
 
-// Adds a directory entry to the dir given as a parameter.
-int add_dir_entry(int dir_addr);
+// Adds a directory entry in the current dir (pointed to by cur_dir) 
+// for the newly create directory of name 'name' and address 'dir_addr'
+int add_dir_entry(const char* name, const int dir_addr);
 
 
 #endif

@@ -182,6 +182,9 @@ int do_mkdir(char *name, char *size)
     if(debug) printf("created new directory at block %d\n", newdir_addr);
 
     // Add a directory entry:
+    if(add_dir_entry(name, newdir_addr) != 0)
+        return -1;
+
     return -1;
 }
 
