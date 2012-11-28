@@ -74,6 +74,7 @@ int create_struct_dir(const char *dir_name)
 
     // Set the first dir_contents to '.', or pointer to this directory:
     memmove((char *)(directory->dir_contents), ".", 2);
+    directory->dir_contents[6] = IS_DIR;
     directory->dir_contents[7] = blk_index;
     directory->filled_count++;
 
@@ -81,6 +82,7 @@ int create_struct_dir(const char *dir_name)
     if(strcmp(dir_name, "root") != 0)
     {
         memmove((char *)(directory->dir_contents + 8), "..", 3);
+        directory->dir_contents[14] = IS_DIR;
         directory->dir_contents[15] = cur_dir;
         directory->filled_count++;
     }
@@ -98,17 +100,17 @@ int create_struct_dir(const char *dir_name)
     
 }
 
-int add_dir_entry(const char* name, const int dir_addr)
+int add_entry(const char* name, const int _addr, const int type)
 {
     int namelen = strlen(name);
     if(namelen > DIR_NAME_MAX-1)
     {
-        fprintf(stderr, "%s: directory name too large (>DIR_NAME_MAX)\n", __func__);
+        fprintf(stderr, "%s: name too large (>DIR_NAME_MAX)\n", __func__);
         return -1;
     }
-    if(dir_addr > 4095 || dir_addr < 0)
+    if(_addr > 4095 || _addr < 0)
     {
-        fprintf(stderr, "%s: dir_addr too large or too small.\n", __func__);
+        fprintf(stderr, "%s: _addr too large or too small.\n", __func__);
         return -1;
     }
 
@@ -128,13 +130,17 @@ int add_dir_entry(const char* name, const int dir_addr)
     {
         // this struct_dir is full! we need to create a new one.
         printf("this struct_dir is full! we need to create a new one.\n");
+        return -1;
     }
 
-    // 2: copy the name into the first 7 ints (directory can have 27 characters max).
+    // 2: copy the name into the first 7 ints (directory can have 23 characters max).
     memmove((char *)(filesys + i), name, namelen+1);
 
     // 3: copy the dir_addr into the final int (final 4 bytes).
-    filesys[i + 7] = dir_addr;
+    filesys[i + 7] = _addr;
+
+    // also write into the row that this row is a directory entry:
+    filesys[i + 6] = type;
 
     // 4: increment the counter keeping track of the number of entries in the dir:
     filesys[blk_start + FILLED_COUNT] ++;
@@ -158,7 +164,7 @@ int check_name(const char *name)
 
     for(i = blk_start; i < indexable_count; i += 8)
     {
-        printf("i is %d\n", i);
+        //printf("i is %d\n", i);
         if(strcmp((const char *)(filesys + i), name) == 0)
         {
             return i;
@@ -166,5 +172,69 @@ int check_name(const char *name)
     }
 
     // Filename was not found
+    return 0;
+}
+
+// Creates FCB and tells FCB to point at the allocated space
+// (the number of 'size' blocks will be pointed to).
+// size is given in bytes. Take size/BLK_SZ_BYTE to get the number of blocks
+// we need to allocate.
+int create_file(const char *file_name, const int size)
+{
+    // Find out if the filename is too large:
+    int namelen = strlen(file_name);
+    if(namelen > FILE_NAME_MAX-1)
+    {
+        fprintf(stderr, "%s: file_name too large (>FILE_NAME_MAX)\n", __func__);
+        return -1;
+    }
+
+    // Check the size to be allocated. If it's greater than 60 KB, we can't do it.
+    if(size > 61440)
+    {
+        fprintf(stderr, "%s: file size too large (>60 KB)\n", __func__);
+        return -1;
+    }
+    if(size <= 0)
+    {
+        fprintf(stderr, "%s: file size must be at least 1 byte.\n", __func__);
+        return -1;
+    }
+
+    // Build the FCB
+    // Allow 28 bytes for the file_name, and 4 bytes for holding the size
+    free_blks_bounds bnds = find_free_blocks(1);
+    int FCB_blk = bnds.start;
+    flag_bit(FCB_blk);
+
+    // Figure out the actual number of blocks we will take up with the allocation:
+    int block_size = size / BLK_SZ_BYTE;
+
+    // File name is not too large, so put it into the first 28 bytes of the file:
+    memmove((char *)(filesys + (FCB_blk * BLK_SZ_INT)), file_name, namelen+1);
+
+    // The 28th-32nd bytes of the block are to hold the size:
+    filesys[(FCB_blk * BLK_SZ_INT)+7] = block_size;
+    
+    // We have 120 ints left to work with. This means we can allocate a max
+    // of 120 blocks, or 60 KB.
+
+    bnds = find_free_blocks(block_size);
+    int alloc = bnds.start;
+    if(bnds.start != -1)
+    {
+        int i = (FCB_blk * BLK_SZ_INT)+8;
+        for(;i < (FCB_blk * BLK_SZ_INT)+BLK_SZ_INT && alloc <= bnds.end; i++)
+        {
+            flag_bit(alloc);
+            filesys[i] = alloc;
+            alloc++;
+        }
+    }
+    else
+    {
+        return -1;
+    }
+
     return 0;
 }

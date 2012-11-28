@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "f_system.h"
 #include "storage.h"
 
 /*--------------------------------------------------------------------------------*/
@@ -149,11 +150,6 @@ int do_root(char *name, char *size)
     cur_dir = root_addr;
     if(debug) printf("root directory is block %d\n", cur_dir);
 
-/*    create_struct_dir("root1");
-    create_struct_dir("root2");
-    create_struct_dir("root3");
-    create_struct_dir("root4");
-*/
     return 0;
 }
 
@@ -174,6 +170,12 @@ int do_chdir(char *name, char *size)
     if(i == 0)
     {
         printf("chdir: %s: No such file or directory\n", name);
+        return -1;
+    }
+
+    if(filesys[i + 6] != IS_DIR)
+    {
+        printf("chdir: %s: Not a directory\n", name);
         return -1;
     }
 
@@ -202,7 +204,7 @@ int do_mkdir(char *name, char *size)
     if(debug) printf("created new directory at block %d\n", newdir_addr);
 
     // Add a directory entry:
-    if(add_dir_entry(name, newdir_addr) != 0)
+    if(add_entry(name, newdir_addr, IS_DIR) != 0)
         return -1;
 
     return 0;
@@ -226,6 +228,10 @@ int do_mvdir(char *name, char *size)
 int do_mkfil(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
+
+    // 1: create FCB and have it point to allocated space
+    // 2: create entry in pwd pointing to FCB
+
     return -1;
 }
 

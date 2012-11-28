@@ -13,7 +13,14 @@
                        // address of the continuation of this directory entry.
 #define FILLED_COUNT 6 // The integer index of the area that contains the amount of dirs in use.
 #define DIR_NAME_MAX 24
+#define FILE_NAME_MAX 28
 #define DIR_CONTENTS_MAX 120
+
+// Flags to denote whether a row in the struct_dir is holding a directory or a file.
+// Use these for setting an entry as 'DIR' or 'FILE'. Also use for finding out
+// if it's a DIR or FILE.
+#define IS_DIR 1
+#define IS_FILE 2
 
 typedef struct str_dir
 {
@@ -32,13 +39,16 @@ typedef struct str_dir
 // and struct directory 'etc'
 int create_struct_dir(const char* dir_name);
 
-// Adds a directory entry in the current dir (pointed to by cur_dir) 
-// for the newly create directory of name 'name' and address 'dir_addr'
-int add_dir_entry(const char* name, const int dir_addr);
+// Adds a entry in the current dir (pointed to by cur_dir) 
+// for the newly create directory or file of name 'name' and address '_addr'
+// type can be either IS_DIR or IS_FILE.
+int add_entry(const char* name, const int _addr, const int type);
 
 // Function to check and see if the current dir already has
 // a directory of the name you're trying to create.
 int check_name(const char *name);
 
+// Allocates a FCB, which points to the file's data
+int create_file(const char *file_name, const int size);
 
 #endif

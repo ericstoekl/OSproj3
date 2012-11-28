@@ -15,8 +15,8 @@
 
 typedef struct strt_end_blck
 {
-    unsigned int start;
-    unsigned int end;
+    int start;
+    int end;
 } free_blks_bounds;
 
 int init_filesys();
