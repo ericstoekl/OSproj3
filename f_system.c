@@ -126,6 +126,7 @@ int add_entry(const char* name, const int _addr, const int type)
             break;
     }
 
+    // Check if the struct dir is full
     if(i == blk_start + BLK_SZ_INT)
     {
         // this struct_dir is full! we need to create a new one.
@@ -183,9 +184,9 @@ int create_file(const char *file_name, const int size)
 {
     // Find out if the filename is too large:
     int namelen = strlen(file_name);
-    if(namelen > FILE_NAME_MAX-1)
+    if(namelen > DIR_NAME_MAX-1)
     {
-        fprintf(stderr, "%s: file_name too large (>FILE_NAME_MAX)\n", __func__);
+        fprintf(stderr, "%s: file_name too large (>DIR_NAME_MAX)\n", __func__);
         return -1;
     }
 
@@ -236,5 +237,5 @@ int create_file(const char *file_name, const int size)
         return -1;
     }
 
-    return 0;
+    return FCB_blk;
 }

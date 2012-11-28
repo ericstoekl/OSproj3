@@ -85,6 +85,10 @@ void parse(char *buf, int *argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
+    // Get rid of compiler warning
+    (void)argc;
+    (void)argv;
+
     debug = 1;
 
     char in[LINESIZE];
@@ -132,6 +136,10 @@ int main(int argc, char *argv[])
 
 int do_root(char *name, char *size)
 {
+    // Get rid of compiler warning
+    (void)name;
+    (void)size;
+
     if (debug) printf("%s\n", __func__);
 
     // We now call a function that allocates 40 megabytes for the filesys pointer:
@@ -156,6 +164,10 @@ int do_root(char *name, char *size)
 
 int do_print(char *name, char *size)
 {
+    // Get rid of compiler warning
+    (void)name;
+    (void)size;
+
     if (debug) printf("%s\n", __func__);
     return -1;
 }
@@ -163,6 +175,9 @@ int do_print(char *name, char *size)
 // Find the directory we want to change to, then set cur_dir as that directory's block addr.
 int do_chdir(char *name, char *size)
 {
+    // Get rid of compiler warning.
+    (void)size;
+
     if (debug) printf("%s\n", __func__);
 
     // Find the directory, if it exists:
@@ -191,6 +206,8 @@ int do_chdir(char *name, char *size)
 // current working directory (cur_dir). 
 int do_mkdir(char *name, char *size)
 {
+    (void)size;
+
     if (debug) printf("%s\n", __func__);
 
     if(check_name(name) != 0)
@@ -229,10 +246,18 @@ int do_mkfil(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
 
-    // 1: create FCB and have it point to allocated space
-    // 2: create entry in pwd pointing to FCB
+    int real_size = atoi((const char *)size);
 
-    return -1;
+    // 1: create FCB and have it point to allocated space
+    int FCB = create_file(name, real_size);
+    if(FCB == -1)
+        return -1;
+
+    // 2: create entry in pwd pointing to FCB
+    if(add_entry(name, FCB, IS_FILE) != 0)
+        return -1;
+
+    return 0;
 }
 
 

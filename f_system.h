@@ -13,7 +13,6 @@
                        // address of the continuation of this directory entry.
 #define FILLED_COUNT 6 // The integer index of the area that contains the amount of dirs in use.
 #define DIR_NAME_MAX 24
-#define FILE_NAME_MAX 28
 #define DIR_CONTENTS_MAX 120
 
 // Flags to denote whether a row in the struct_dir is holding a directory or a file.
