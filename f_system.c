@@ -210,6 +210,8 @@ int create_file(const char *file_name, const int size)
 
     // Figure out the actual number of blocks we will take up with the allocation:
     int block_size = size / BLK_SZ_BYTE;
+    if((size % BLK_SZ_BYTE) > 0)
+        block_size++;
 
     // File name is not too large, so put it into the first 28 bytes of the file:
     memmove((char *)(filesys + (FCB_blk * BLK_SZ_INT)), file_name, namelen+1);

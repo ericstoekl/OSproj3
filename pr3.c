@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "f_system.h"
 #include "storage.h"
@@ -38,6 +39,9 @@ extern int debug;                                    // extra output; 1 = on, 0 
 extern unsigned int *filesys;
 
 extern unsigned int cur_dir;
+
+// Keeps track of whether or not fsystem exists:
+bool root_called = false;
 
 /* The size argument is usually ignored.
  * The return value is 0 (success) or -1 (failure).
@@ -140,6 +144,12 @@ int do_root(char *name, char *size)
     (void)name;
     (void)size;
 
+    if(root_called)
+    {
+        fprintf(stderr, "%s: Root dir already exists!\n", __func__);
+        return -1;
+    }
+
     if (debug) printf("%s\n", __func__);
 
     // We now call a function that allocates 40 megabytes for the filesys pointer:
@@ -157,6 +167,8 @@ int do_root(char *name, char *size)
     // Set the current working dir as the root dir:
     cur_dir = root_addr;
     if(debug) printf("root directory is block %d\n", cur_dir);
+    
+    root_called = true;
 
     return 0;
 }
@@ -168,8 +180,38 @@ int do_print(char *name, char *size)
     (void)name;
     (void)size;
 
+    if(!root_called)
+    {
+        fprintf(stderr, "%s: Root directory must be called first\n", __func__);
+        return -1;
+    }
+
     if (debug) printf("%s\n", __func__);
-    return -1;
+
+    // 1: Print out contents of cur_dir sequentially
+    // If directory, print the directory name and what block it points to
+    // If file, print FCB block, and explore FCB block to print file size.
+    unsigned int i = (cur_dir * BLK_SZ_INT) + 8;
+    for(; filesys[i] != 0xDEADBEEF; i += 8)
+    {
+        if(filesys[i+6] == IS_DIR)
+        {
+            printf("Dir %s, block: %d\n", (char *)(filesys + i), filesys[i+7]);
+        }
+        else if(filesys[i+6] == IS_FILE)
+        {
+            // Find out size of the file by looking at FCB:
+            int FCB, file_size;
+            FCB = filesys[i + 7];
+            file_size = filesys[(FCB * BLK_SZ_INT) + 7];
+            printf("File %s, block: %d, file size: %d\n", (char *)(filesys + i),
+                FCB, file_size);
+        }
+    }
+
+    // 2: Explore sub-directories, and repeat.
+
+    return 0;
 }
 
 // Find the directory we want to change to, then set cur_dir as that directory's block addr.
@@ -177,6 +219,12 @@ int do_chdir(char *name, char *size)
 {
     // Get rid of compiler warning.
     (void)size;
+
+    if(!root_called)
+    {
+        fprintf(stderr, "%s: Root directory must be called first\n", __func__);
+        return -1;
+    }
 
     if (debug) printf("%s\n", __func__);
 
@@ -207,6 +255,12 @@ int do_chdir(char *name, char *size)
 int do_mkdir(char *name, char *size)
 {
     (void)size;
+
+    if(!root_called)
+    {
+        fprintf(stderr, "%s: Root directory must be called first\n", __func__);
+        return -1;
+    }
 
     if (debug) printf("%s\n", __func__);
 
@@ -245,6 +299,12 @@ int do_mvdir(char *name, char *size)
 int do_mkfil(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
+
+    if(!root_called)
+    {
+        fprintf(stderr, "%s: Root directory must be called first\n", __func__);
+        return -1;
+    }
 
     int real_size = atoi((const char *)size);
 
