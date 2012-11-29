@@ -196,7 +196,7 @@ int do_print(char *name, char *size)
     {
         if(filesys[i+6] == IS_DIR)
         {
-            printf("Dir %s, block: %d\n", (char *)(filesys + i), filesys[i+7]);
+            printf("Dir %s, address: %d\n", (char *)(filesys + i), filesys[i+7]);
         }
         else if(filesys[i+6] == IS_FILE)
         {
@@ -204,8 +204,8 @@ int do_print(char *name, char *size)
             int FCB, file_size;
             FCB = filesys[i + 7];
             file_size = filesys[(FCB * BLK_SZ_INT) + 7];
-            printf("File %s, block: %d, file size: %d\n", (char *)(filesys + i),
-                FCB, file_size);
+            printf("File %s, address: %d, block size: %d, file size: %d\n", (char *)(filesys + i),
+                FCB, file_size, file_size * BLK_SZ_BYTE);
         }
     }
 
@@ -292,6 +292,59 @@ int do_rmdir(char *name, char *size)
 int do_mvdir(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
+    // Can only remove directories pointed to by the cur_dir
+    
+    // name == oldname, size == newname
+
+    int sizelen = strlen(size);
+
+    if(name == NULL || strlen(name) == 0)
+    {
+        fprintf(stderr, "%s: %s: no such file or directory\n", __func__, name);
+        return -1;
+    }
+    if(size == NULL || sizelen == 0)
+    {
+        fprintf(stderr, "%s: %s: no new file name given\n", __func__, size);
+        return -1;
+    }
+    if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0 || strcmp(size, ".") == 0
+            || strcmp(size, "..") == 0)
+    {
+        fprintf(stderr, "%s: %s: file name cannot be '.' or '..'\n", __func__, size);
+        return -1;
+    }
+
+    if(sizelen > DIR_NAME_MAX-1)
+    {
+        fprintf(stderr, "%s: %s: file name too long (>DIR_NAME_MAX)\n", __func__, size);
+        return -1;
+    }
+
+    // Check if directory of name 'size' already exists; if so kill the function, throw error.
+    if(check_name(size) != 0) // Then the name was found
+    {
+        fprintf(stderr, "%s: %s: file name already exists in directory\n", __func__, size);
+        return -1;
+    }
+
+    int i = (cur_dir * BLK_SZ_INT) + 8;
+
+    // Make sure to add functionality for further blocks that this struct dir spans
+    for(; i < (cur_dir * BLK_SZ_INT) + BLK_SZ_INT; i += 8)
+    {
+        if(strcmp(name, (char *)(filesys + i)) == 0)
+        {
+            memmove((char *)(filesys + i), size, sizelen+1);
+            // Change the struct dir's name:
+            int dir_addr = filesys[i+7];
+            memmove((char *)(filesys + (dir_addr * BLK_SZ_INT)), size, sizelen+1);
+            return 0;
+        }
+    }
+
+    printf("%s: %s: file name not found\n", __func__, name);
+
     return -1;
 }
 
@@ -331,7 +384,11 @@ int do_rmfil(char *name, char *size)
 int do_mvfil(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
-    return -1;
+
+    if(do_mvdir(name, size) != 0)
+        return -1;
+
+    return 0;
 }
 
 
