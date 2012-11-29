@@ -54,7 +54,7 @@ int init_filesys()
 }
 
 // Flags a single bit in the bitmap vector as "allocated" (1).
-// If that bit is already flagged, it does nothing.
+// If that bit is already flagged, it unflags it (therefore xor).
 void flag_bit(unsigned int blocknum)
 {
     if(blocknum >= 4096)
@@ -68,7 +68,7 @@ void flag_bit(unsigned int blocknum)
 
     b_index = (unsigned int)pow(2, b_index); // Take 2^b_index to isolate the bit to flag
 
-    filesys[i_index] = filesys[i_index] | b_index;
+    filesys[i_index] = filesys[i_index] ^ b_index;
 }
 
 // Finds howmany blocks, returns the start index of the free blocks and end index.

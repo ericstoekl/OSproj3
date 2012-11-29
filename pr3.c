@@ -401,7 +401,7 @@ int do_szfil(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
 
-    if(size == NULL) return -1;
+    if(size == NULL || strlen(size) == 0) return -1;
 
     // 1: See if file exists
     // 2: See if size is greater or less than current file size
@@ -449,11 +449,16 @@ int do_szfil(char *name, char *size)
     }
     else if(blk_sz < cur_size) // We need to unallocate space.
     {
-    }
-    else // The inputted size is equal to the current size, do nothing.
-    {
-    }
+        // Unallocalte all entries beyond blk_sz point in the FCB:
+        int i = (FCB_blk * BLK_SZ_INT) + 8 + blk_sz;
+        for(; i < ((FCB_blk * BLK_SZ_INT) + 8 + cur_size); i++)
+            flag_bit(filesys[i]);
 
+        // Rewrite FCB size:
+        filesys[(FCB_blk * BLK_SZ_INT) + 7] = blk_sz;
+    }
+    
+    /* else The inputted size is equal to the current size, do nothing. */
 
     return 0;
 }
