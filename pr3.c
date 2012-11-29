@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
         cmd = (n > 0) ? a[0] : dummy;
         fnm = (n > 1) ? a[1] : dummy;
         fsz = (n > 2) ? a[2] : dummy;
-        if (debug) printf(":%s:%s:%s:\n", cmd, fnm, fsz);
+        if (debug) printf("\n:%s:%s:%s:\n", cmd, fnm, fsz);
 
         if (n == 0) continue;                     // blank line
 
@@ -195,8 +195,11 @@ int do_print(char *name, char *size)
 
     printf("Current directory is `%s'\n", (char *)(filesys + i));
 
-    for(i += 8; filesys[i] != 0xDEADBEEF; i += 8)
+    int counter = 0;
+    int filecount = filesys[i + FILLED_COUNT];
+    for(i += 8; counter < filecount; i += 8)
     {
+        if(filesys[i] == 0xDEADBEEF) continue;
         if(filesys[i+6] == IS_DIR)
         {
             printf("Dir %s, address: %d\n", (char *)(filesys + i), filesys[i+7]);
@@ -210,6 +213,7 @@ int do_print(char *name, char *size)
             printf("File %s, address: %d, block size: %d, file size: %d\n", (char *)(filesys + i),
                 FCB, file_size, file_size * BLK_SZ_BYTE);
         }
+        counter++;
     }
 
     // 2: Explore sub-directories, and repeat.
@@ -287,7 +291,39 @@ int do_mkdir(char *name, char *size)
 
 int do_rmdir(char *name, char *size)
 {
+    (void)size;
+
     if (debug) printf("%s\n", __func__);
+
+    if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+    {
+        fprintf(stderr, "%s: %s: cannot remove directory\n", __func__, name);
+        return -1;
+    }
+
+    // If the filled count for the given directory is 2 or less, than delete it.
+    int i = check_name(name);
+    if(i != 0) // Then the given name is a directory.
+    {
+        int dir_index = filesys[i + 7];
+        if(filesys[dir_index * BLK_SZ_INT + FILLED_COUNT] <= 2)
+        {
+            // Then we can remove this dir.
+            // Turn the directory entry in cur_dir into deadbeef:
+            int j;
+            for(j = 0; j < 8; j++)
+                filesys[i + j] = 0xDEADBEEF;
+            // Unallocate in bitmap
+            flag_bit(dir_index);
+
+            // Decrement the filled count in the cur_dir:
+            filesys[cur_dir * BLK_SZ_INT + FILLED_COUNT]--;
+            return 0;
+        }
+
+    }
+    
+    fprintf(stderr, "%s: %s: cannot remove directory\n", __func__, name);
     return -1;
 }
 
