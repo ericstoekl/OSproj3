@@ -149,6 +149,7 @@ int add_entry(const char* name, const int _addr, const int type)
     return 0;
 }
 
+// RETURNS an actual block index if 'name' successfully found.
 int check_name(const char *name)
 {
     int i;
@@ -223,16 +224,9 @@ int create_file(const char *file_name, const int size)
     // of 120 blocks, or 60 KB.
 
     bnds = find_free_blocks(block_size);
-    int alloc = bnds.start;
     if(bnds.start != -1)
     {
-        int i = (FCB_blk * BLK_SZ_INT)+8;
-        for(;i < (FCB_blk * BLK_SZ_INT)+BLK_SZ_INT && alloc <= bnds.end; i++)
-        {
-            flag_bit(alloc);
-            filesys[i] = alloc;
-            alloc++;
-        }
+        alloc_blocks_FCB(bnds.start, bnds.end, FCB_blk, 0);
     }
     else
     {
@@ -240,4 +234,16 @@ int create_file(const char *file_name, const int size)
     }
 
     return FCB_blk;
+}
+
+void alloc_blocks_FCB(int bnds_start, int bnds_end, int FCB_blk, int start_alloc_at)
+{
+    int i = (FCB_blk * BLK_SZ_INT) + start_alloc_at + 8;
+    int alloc = bnds_start;
+    for(;i < (FCB_blk * BLK_SZ_INT)+BLK_SZ_INT && alloc <= bnds_end; i++)
+    {
+        flag_bit(alloc);
+        filesys[i] = alloc;
+        alloc++;
+    }
 }

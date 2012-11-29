@@ -400,7 +400,62 @@ int do_mvfil(char *name, char *size)
 int do_szfil(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
-    return -1;
+
+    if(size == NULL) return -1;
+
+    // 1: See if file exists
+    // 2: See if size is greater or less than current file size
+
+    int i = check_name(name);
+    if(i == 0)
+    {
+        fprintf(stderr, "%s: %s: File name not found\n", __func__, name);
+        return -1;
+    }
+
+    int FCB_blk = filesys[i+7];
+    int cur_size = filesys[(FCB_blk * BLK_SZ_INT) + 7];
+
+    // input_sz will be size inputted, cur_size is current size of file, both in blocks.
+    int input_sz = atoi((const char *)size);
+    int blk_sz = input_sz / BLK_SZ_BYTE;
+    if(input_sz % BLK_SZ_BYTE != 0)
+        blk_sz++;
+
+    // Check the size to be allocated. If it's greater than 60 KB, we can't do it.
+    if(input_sz > 61440)
+    {
+        fprintf(stderr, "%s: file size too large (>60 KB)\n", __func__);
+        return -1;
+    }
+
+    // if inputted size is bigger than current size, we need to allocate more space.
+    if(blk_sz > cur_size)
+    {
+        // Find out how many more blocks we need:
+        int howmany = blk_sz - cur_size;
+        free_blks_bounds bnds = find_free_blocks(howmany);
+
+        if(bnds.start == -1)
+        {
+            fprintf(stderr, "%s: find_free_blocks error\n", __func__);
+            return -1;
+        }
+
+        alloc_blocks_FCB(bnds.start, bnds.end, FCB_blk, cur_size);
+
+        // Rewrite FCB size:
+        filesys[(FCB_blk * BLK_SZ_INT) + 7] = blk_sz;
+    }
+    else if(blk_sz < cur_size) // We need to unallocate space.
+    {
+    }
+    else // The inputted size is equal to the current size, do nothing.
+    {
+    }
+
+
+    return 0;
 }
 
 

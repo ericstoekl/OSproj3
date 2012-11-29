@@ -50,4 +50,7 @@ int check_name(const char *name);
 // Allocates a FCB, which points to the file's data
 int create_file(const char *file_name, const int size);
 
+// create_file and do_szfil helper function
+void alloc_blocks_FCB(int bnds_start, int bnds_end, int FCB_blk, int start_alloc_at);
+
 #endif
