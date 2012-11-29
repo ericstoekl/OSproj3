@@ -303,7 +303,7 @@ int do_rmdir(char *name, char *size)
 
     // If the filled count for the given directory is 2 or less, than delete it.
     int i = check_name(name);
-    if(i != 0) // Then the given name is a directory.
+    if(i != 0 && filesys[i + 6] == IS_DIR) // Then the given name is a directory.
     {
         int dir_index = filesys[i + 7];
         if(filesys[dir_index * BLK_SZ_INT + FILLED_COUNT] <= 2)
@@ -417,7 +417,37 @@ int do_mkfil(char *name, char *size)
 
 int do_rmfil(char *name, char *size)
 {
+    (void)size;
     if (debug) printf("%s\n", __func__);
+
+    // Find out if the file actually exists
+    int i = check_name(name);
+    if(i != 0 && filesys[i + 6] == IS_FILE) // Then the given name is a file.
+    {
+        int FCB_index = filesys[i + 7];
+        int file_size = filesys[FCB_index * BLK_SZ_INT + 7];
+        // We now have the block index of the FCB.
+        // We should de-allocate all the data that the FCB points to.
+        int j;
+        for(j = 0; j < file_size; j++)
+        {
+            flag_bit(filesys[FCB_index * BLK_SZ_INT + 8 + j]);
+        }
+        // Deallocate the FCB itself:
+        flag_bit(FCB_index);
+
+        // Remove the entry pointing to the now defunct FCB in the cur_dir:
+        // Turn the directory entry in cur_dir into deadbeef:
+        for(j = 0; j < 8; j++)
+            filesys[i + j] = 0xDEADBEEF;
+
+        // Decrement the file count in cur_dir:
+        filesys[cur_dir * BLK_SZ_INT + FILLED_COUNT] --;
+
+        return 0;
+    }
+    
+    fprintf(stderr, "%s: %s: cannot remove file\n", __func__, name);
     return -1;
 }
 
