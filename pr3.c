@@ -191,8 +191,11 @@ int do_print(char *name, char *size)
     // 1: Print out contents of cur_dir sequentially
     // If directory, print the directory name and what block it points to
     // If file, print FCB block, and explore FCB block to print file size.
-    unsigned int i = (cur_dir * BLK_SZ_INT) + 8;
-    for(; filesys[i] != 0xDEADBEEF; i += 8)
+    unsigned int i = (cur_dir * BLK_SZ_INT);
+
+    printf("Current directory is `%s'\n", (char *)(filesys + i));
+
+    for(i += 8; filesys[i] != 0xDEADBEEF; i += 8)
     {
         if(filesys[i+6] == IS_DIR)
         {
@@ -327,20 +330,22 @@ int do_mvdir(char *name, char *size)
         fprintf(stderr, "%s: %s: file name already exists in directory\n", __func__, size);
         return -1;
     }
-
-    int i = (cur_dir * BLK_SZ_INT) + 8;
-
-    // Make sure to add functionality for further blocks that this struct dir spans
-    for(; i < (cur_dir * BLK_SZ_INT) + BLK_SZ_INT; i += 8)
+    // name cannot be the directory name, so check for that:
+    if(strcmp(name, (char *)(filesys + (cur_dir * BLK_SZ_INT))) == 0)
     {
-        if(strcmp(name, (char *)(filesys + i)) == 0)
-        {
-            memmove((char *)(filesys + i), size, sizelen+1);
-            // Change the struct dir's name:
-            int dir_addr = filesys[i+7];
-            memmove((char *)(filesys + (dir_addr * BLK_SZ_INT)), size, sizelen+1);
-            return 0;
-        }
+        fprintf(stderr, "%s: %s: file name already exists in directory\n", __func__, name);
+        return -1;
+    }
+
+    int i = check_name(name);
+    if(i != 0)
+    {
+        // name was found in directory.
+        memmove((char *)(filesys + i), size, sizelen+1);
+        // Change the struct dir's name:
+        int dir_addr = filesys[i+7];
+        memmove((char *)(filesys + (dir_addr * BLK_SZ_INT)), size, sizelen+1);
+        return 0;
     }
 
     printf("%s: %s: file name not found\n", __func__, name);
