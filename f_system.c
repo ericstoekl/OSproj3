@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <malloc.h>
+#include <stdbool.h>
 
 #include "f_system.h"
 #include "storage.h"
@@ -57,6 +58,9 @@ int create_struct_dir(const char *dir_name)
 
     // Set the number of dir entries to 0:
     directory->filled_count = 0;
+
+    // This is a new struct dir, so set more_data to deadbeef:
+    directory->more_data = 0xDEADBEEF;
 
     // All the dir_contents[] should be set to 0xDEADBEEF, to denote that they
     // are empty and ready to be filled.
@@ -118,20 +122,32 @@ int add_entry(const char* name, const int _addr, const int type)
 
     // We can start searching at index 8 of this block:
     int blk_start = cur_dir * BLK_SZ_INT;
-    int i = blk_start + 8;
-    for(; i < (blk_start + BLK_SZ_INT); i += 8)
+    int i;
+    bool repeat;
+
+    do
     {
-        // If the first int of the row is DEADBEEF, use this row:
-        if(filesys[i] == 0xDEADBEEF)
-            break;
-    }
+        repeat = false;
+        i = blk_start;
+        for(i += 8; i < (blk_start + BLK_SZ_INT); i += 8)
+        {
+            // If the first int of the row is DEADBEEF, use this row:
+            if(filesys[i] == 0xDEADBEEF)
+                break;
+        }
+        if(filesys[blk_start + 7] != 0xDEADBEEF)
+        {
+            blk_start = filesys[blk_start + 7] * BLK_SZ_INT;
+            repeat = true;
+        }
+    } while(repeat);
 
     // Check if the struct dir is full
     if(i == blk_start + BLK_SZ_INT)
     {
         // this struct_dir is full! we need to create a new one.
-        printf("this struct_dir is full! we need to create a new one.\n");
-        return -1;
+        int ext_index = create_struct_dir((char *)(filesys + cur_dir * BLK_SZ_INT));
+        filesys[blk_start + 7] = ext_index;
     }
 
     // 2: copy the name into the first 7 ints (directory can have 23 characters max).
@@ -156,6 +172,7 @@ int check_name(const char *name)
     int blk_start = (cur_dir * BLK_SZ_INT);
     int filled_count = filesys[blk_start + FILLED_COUNT];
     int indexable_count = (filled_count+1)*8 + blk_start;
+    bool is_more;
 
     // Check if name is root, if it is, return -1
     if(strcmp(name, "root") == 0)
@@ -164,14 +181,26 @@ int check_name(const char *name)
         return -1;
     }
 
-    for(i = blk_start; i < indexable_count; i += 8)
+    do
     {
-        //printf("i is %d\n", i);
-        if(strcmp((const char *)(filesys + i), name) == 0)
+        is_more = false;
+        for(i = blk_start; i < indexable_count; i += 8)
         {
-            return i;
+            //printf("i is %d\n", i);
+            if(strcmp((const char *)(filesys + i), name) == 0)
+            {
+                return i;
+            }
         }
-    }
+        if(filesys[blk_start + 7] != 0xDEADBEEF)
+        {
+            // There is an extention to this struct dir:
+            blk_start = filesys[blk_start + 7] * BLK_SZ_INT;
+            filled_count = filesys[blk_start + FILLED_COUNT];
+            indexable_count = (filled_count+1)*8 + blk_start;
+            is_more = true;
+        }
+    } while(is_more);
 
     // Filename was not found
     return 0;

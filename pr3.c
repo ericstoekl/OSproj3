@@ -220,29 +220,44 @@ int do_print(char *name, char *size)
 
         int counter = 0;
         int filecount = filesys[i + FILLED_COUNT];
+        bool is_more;
 
-        // Explore directories in current folder:
-        for(i += 8; counter < filecount; i += 8)
+        // print contents of current directory:
+        do
         {
-            if(filesys[i] == 0xDEADBEEF) continue;
-            if(filesys[i+6] == IS_DIR)
+            is_more = false;
+            for(i += 8; counter < filecount; i += 8)
             {
-                printf("Dir %s, address: %d\n", (char *)(filesys + i), filesys[i+7]);
-                if(strcmp((char *)(filesys + i), ".") != 0 && strcmp((char *)(filesys + i), "..") != 0)
-                    dir_stck_push(filesys[i+7]); // Push directory onto stack so we can explore next
-                                                 // do while cycle.
+                if(filesys[i] == 0xDEADBEEF) continue;
+                if(filesys[i+6] == IS_DIR)
+                {
+                    printf("Dir %s, address: %d\n", (char *)(filesys + i), filesys[i+7]);
+                    if(strcmp((char *)(filesys + i), ".") != 0 && strcmp((char *)(filesys + i), "..") != 0)
+                        dir_stck_push(filesys[i+7]); // Push directory onto stack so we can explore next
+                                                     // do while cycle.
+                }
+                else if(filesys[i+6] == IS_FILE)
+                {
+                    // Find out size of the file by looking at FCB:
+                    int FCB, file_size;
+                    FCB = filesys[i + 7];
+                    file_size = filesys[(FCB * BLK_SZ_INT) + 7];
+                    printf("File %s, address: %d, block size: %d, file size: %d\n", (char *)(filesys + i),
+                        FCB, file_size, file_size * BLK_SZ_BYTE);
+                }
+                counter++;
             }
-            else if(filesys[i+6] == IS_FILE)
+            
+            if(filesys[print_dir * BLK_SZ_INT + 7] != 0xDEADBEEF)
             {
-                // Find out size of the file by looking at FCB:
-                int FCB, file_size;
-                FCB = filesys[i + 7];
-                file_size = filesys[(FCB * BLK_SZ_INT) + 7];
-                printf("File %s, address: %d, block size: %d, file size: %d\n", (char *)(filesys + i),
-                    FCB, file_size, file_size * BLK_SZ_BYTE);
+                // Then there is an extention struct dir:
+                print_dir = filesys[print_dir * BLK_SZ_INT + 7];
+                i = print_dir * BLK_SZ_INT;
+                filecount = filesys[i + FILLED_COUNT];
+                counter = 0;
+                is_more = true;
             }
-            counter++;
-        }
+        } while(is_more);
     } while(dir_stck_empty() == 0);
 
     return 0;
