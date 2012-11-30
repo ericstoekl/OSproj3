@@ -9,6 +9,7 @@
 
 #include "f_system.h"
 #include "storage.h"
+#include "dir_stack.h"
 
 /*--------------------------------------------------------------------------------*/
 
@@ -39,6 +40,10 @@ extern int debug;                                    // extra output; 1 = on, 0 
 extern unsigned int *filesys;
 
 extern unsigned int cur_dir;
+
+// Stack values:
+extern int *dir_stck_items;
+extern int dir_stck_top;
 
 // Keeps track of whether or not fsystem exists:
 bool root_called = false;
@@ -191,32 +196,54 @@ int do_print(char *name, char *size)
     // 1: Print out contents of cur_dir sequentially
     // If directory, print the directory name and what block it points to
     // If file, print FCB block, and explore FCB block to print file size.
-    unsigned int i = (cur_dir * BLK_SZ_INT);
+    
+    int print_dir; // The directory that we will print is stored in this var.
+                   // At first, it will be cur_dir.
+                   // Then it will take on whatever directory it gets from the dir_stack.
 
-    printf("Current directory is `%s'\n", (char *)(filesys + i));
-
-    int counter = 0;
-    int filecount = filesys[i + FILLED_COUNT];
-    for(i += 8; counter < filecount; i += 8)
+    // Do while the stack is not empty. Uses a stack to avoid having to do recursion.
+    // This is to facilitate 'ls -lR' style directory printing.
+    do
     {
-        if(filesys[i] == 0xDEADBEEF) continue;
-        if(filesys[i+6] == IS_DIR)
+        if(dir_stck_empty() != 0) // The stack is empty, set print_dir to cur_dir:
         {
-            printf("Dir %s, address: %d\n", (char *)(filesys + i), filesys[i+7]);
+            print_dir = cur_dir;
         }
-        else if(filesys[i+6] == IS_FILE)
+        else
         {
-            // Find out size of the file by looking at FCB:
-            int FCB, file_size;
-            FCB = filesys[i + 7];
-            file_size = filesys[(FCB * BLK_SZ_INT) + 7];
-            printf("File %s, address: %d, block size: %d, file size: %d\n", (char *)(filesys + i),
-                FCB, file_size, file_size * BLK_SZ_BYTE);
+            print_dir = dir_stck_pop();
         }
-        counter++;
-    }
 
-    // 2: Explore sub-directories, and repeat.
+        unsigned int i = (print_dir * BLK_SZ_INT);
+
+        printf("Current directory is `%s'\n", (char *)(filesys + i));
+
+        int counter = 0;
+        int filecount = filesys[i + FILLED_COUNT];
+
+        // Explore directories in current folder:
+        for(i += 8; counter < filecount; i += 8)
+        {
+            if(filesys[i] == 0xDEADBEEF) continue;
+            if(filesys[i+6] == IS_DIR)
+            {
+                printf("Dir %s, address: %d\n", (char *)(filesys + i), filesys[i+7]);
+                if(strcmp((char *)(filesys + i), ".") != 0 && strcmp((char *)(filesys + i), "..") != 0)
+                    dir_stck_push(filesys[i+7]); // Push directory onto stack so we can explore next
+                                                 // do while cycle.
+            }
+            else if(filesys[i+6] == IS_FILE)
+            {
+                // Find out size of the file by looking at FCB:
+                int FCB, file_size;
+                FCB = filesys[i + 7];
+                file_size = filesys[(FCB * BLK_SZ_INT) + 7];
+                printf("File %s, address: %d, block size: %d, file size: %d\n", (char *)(filesys + i),
+                    FCB, file_size, file_size * BLK_SZ_BYTE);
+            }
+            counter++;
+        }
+    } while(dir_stck_empty() == 0);
 
     return 0;
 }
