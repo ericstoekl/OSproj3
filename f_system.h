@@ -1,5 +1,5 @@
-/* Erich Stoekl, Penn State University, 2012
- * ems5311@psu.edu
+/* Erich Stoekl, Joong Hun Kwak
+ * ems5311@psu.edu, jwk5221@psu.edu
  *
  * Functions for dealing with:
  * - struct directory creation and management
@@ -52,5 +52,7 @@ int create_file(const char *file_name, const int size);
 
 // create_file and do_szfil helper function
 void alloc_blocks_FCB(int bnds_start, int bnds_end, int FCB_blk, int start_alloc_at);
+
+int rename_f(char *name, char *size, int type);
 
 #endif

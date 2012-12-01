@@ -1,4 +1,12 @@
-/* CMPSC 473, Project 3, starter kit
+/* Project 3, CMPSC 473
+ * Erich Stoekl, Joong Hun Kwak
+ * ems5311@psu.edu, jwk5221@psu.edu
+ *
+ * pr3.c
+ *
+ * Main entry point for filesystem project, Project 3
+ * Parses input from stdin, then runs function based on that
+ * input to perform specified task.
  */
 
 #include <stdio.h>
@@ -205,6 +213,7 @@ int do_print(char *name, char *size)
     // This is to facilitate 'ls -lR' style directory printing.
     do
     {
+        printf("\n");
         if(dir_stck_empty() != 0) // The stack is empty, set print_dir to cur_dir:
         {
             print_dir = cur_dir;
@@ -216,7 +225,7 @@ int do_print(char *name, char *size)
 
         unsigned int i = (print_dir * BLK_SZ_INT);
 
-        printf("Current directory is `%s'\n", (char *)(filesys + i));
+        printf("Currently looking at directory `%s'\n", (char *)(filesys + i));
 
         int counter = 0;
         int filecount = filesys[i + FILLED_COUNT];
@@ -373,62 +382,11 @@ int do_rmdir(char *name, char *size)
 int do_mvdir(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
-    // Can only remove directories pointed to by the cur_dir
     
-    // name == oldname, size == newname
-
-    int sizelen = strlen(size);
-
-    if(name == NULL || strlen(name) == 0)
-    {
-        fprintf(stderr, "%s: %s: no such file or directory\n", __func__, name);
+    if(rename_f(name, size, IS_DIR) != 0)
         return -1;
-    }
-    if(size == NULL || sizelen == 0)
-    {
-        fprintf(stderr, "%s: %s: no new file name given\n", __func__, size);
-        return -1;
-    }
-    if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0 || strcmp(size, ".") == 0
-            || strcmp(size, "..") == 0)
-    {
-        fprintf(stderr, "%s: %s: file name cannot be '.' or '..'\n", __func__, size);
-        return -1;
-    }
 
-    if(sizelen > DIR_NAME_MAX-1)
-    {
-        fprintf(stderr, "%s: %s: file name too long (>DIR_NAME_MAX)\n", __func__, size);
-        return -1;
-    }
-
-    // Check if directory of name 'size' already exists; if so kill the function, throw error.
-    if(check_name(size) != 0) // Then the name was found
-    {
-        fprintf(stderr, "%s: %s: file name already exists in directory\n", __func__, size);
-        return -1;
-    }
-    // name cannot be the directory name, so check for that:
-    if(strcmp(name, (char *)(filesys + (cur_dir * BLK_SZ_INT))) == 0)
-    {
-        fprintf(stderr, "%s: %s: file name already exists in directory\n", __func__, name);
-        return -1;
-    }
-
-    int i = check_name(name);
-    if(i != 0)
-    {
-        // name was found in directory.
-        memmove((char *)(filesys + i), size, sizelen+1);
-        // Change the struct dir's name:
-        int dir_addr = filesys[i+7];
-        memmove((char *)(filesys + (dir_addr * BLK_SZ_INT)), size, sizelen+1);
-        return 0;
-    }
-
-    printf("%s: %s: file name not found\n", __func__, name);
-
-    return -1;
+    return 0;
 }
 
 
@@ -498,7 +456,7 @@ int do_mvfil(char *name, char *size)
 {
     if (debug) printf("%s\n", __func__);
 
-    if(do_mvdir(name, size) != 0)
+    if(rename_f(name, size, IS_FILE) != 0)
         return -1;
 
     return 0;

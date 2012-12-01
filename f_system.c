@@ -1,5 +1,5 @@
-/* Erich Stoekl, Penn State University, 2012
- * ems5311@psu.edu
+/* Erich Stoekl, Joong Hun Kwak
+ * ems5311@psu.edu, jwk5221@psu.edu
  *
  * f_system function implementations
  *
@@ -232,6 +232,13 @@ int create_file(const char *file_name, const int size)
         return -1;
     }
 
+    // Check to see if name already exists in dir:
+    if(check_name(file_name) != 0)
+    {
+        fprintf(stderr, "%s: %s: file name already exists\n", __func__, file_name);
+        return -1;
+    }
+
     // Build the FCB
     // Allow 28 bytes for the file_name, and 4 bytes for holding the size
     free_blks_bounds bnds = find_free_blocks(1);
@@ -275,4 +282,71 @@ void alloc_blocks_FCB(int bnds_start, int bnds_end, int FCB_blk, int start_alloc
         filesys[i] = alloc;
         alloc++;
     }
+}
+
+int rename_f(char *name, char *size, int type)
+{
+    // Can only remove directories pointed to by the cur_dir
+    // name == oldname, size == newname
+
+    int sizelen = strlen(size);
+
+    if(name == NULL || strlen(name) == 0)
+    {
+        fprintf(stderr, "%s: %s: no such file or directory\n", __func__, name);
+        return -1;
+    }
+    if(size == NULL || sizelen == 0)
+    {
+        fprintf(stderr, "%s: %s: no new file name given\n", __func__, size);
+        return -1;
+    }
+    if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0 || strcmp(size, ".") == 0
+            || strcmp(size, "..") == 0)
+    {
+        fprintf(stderr, "%s: %s: file name cannot be '.' or '..'\n", __func__, size);
+        return -1;
+    }
+
+    if(sizelen > DIR_NAME_MAX-1)
+    {
+        fprintf(stderr, "%s: %s: file name too long (>DIR_NAME_MAX)\n", __func__, size);
+        return -1;
+    }
+
+    // Check if directory of name 'size' already exists; if so kill the function, throw error.
+    if(check_name(size) != 0) // Then the name was found
+    {
+        fprintf(stderr, "%s: %s: file name already exists in directory\n", __func__, size);
+        return -1;
+    }
+    // name cannot be the directory name, so check for that:
+    if(strcmp(name, (char *)(filesys + (cur_dir * BLK_SZ_INT))) == 0)
+    {
+        fprintf(stderr, "%s: %s: file name already exists in directory\n", __func__, name);
+        return -1;
+    }
+
+    int i = check_name(name);
+    
+    if(filesys[i+6] != (unsigned int)type)
+    {
+	fprintf(stderr, "%s: %s: wrong type\n", __func__, name);
+	return -1;
+    }
+
+    if(i != 0)
+    {
+        // name was found in directory.
+        memmove((char *)(filesys + i), size, sizelen+1);
+        // Change the struct dir's name:
+        int dir_addr = filesys[i+7];
+        memmove((char *)(filesys + (dir_addr * BLK_SZ_INT)), size, sizelen+1);
+        return 0;
+    }
+
+
+    printf("%s: %s: file name not found\n", __func__, name);
+
+    return -1;
 }

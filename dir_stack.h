@@ -1,5 +1,5 @@
-/* Erich Stoekl, Penn State University, 2012
- * ems5311@psu.edu
+/* Erich Stoekl, Joong Hun Kwak
+ * ems5311@psu.edu, jwk5221@psu.edu
  *
  * stack.h - functions for stack  
  * Used for print function
